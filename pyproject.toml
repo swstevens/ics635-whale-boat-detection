@@ -30,6 +30,10 @@ dev = ["ruff", "pre-commit", "nbstripout"]
 line-length = 100
 target-version = "py310"
 
+[tool.ruff.format]
+# Single quotes, matching the 605 notebook this project builds on.
+quote-style = "single"
+
 [tool.ruff.lint]
 # pycodestyle (PEP 8) errors and warnings, pyflakes (unused imports, undefined
 # names), and import sorting.

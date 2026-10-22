@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-CATEGORIES = [{"id": 1, "name": "whale"}, {"id": 2, "name": "boat"}]
+CATEGORIES = [{'id': 1, 'name': 'whale'}, {'id': 2, 'name': 'boat'}]
 
 
 def _ocean(rng, size, base):
@@ -81,14 +81,14 @@ def make_chip(rng, size=500):
     out = Image.fromarray(np.uint8(np.clip(img, 0, 255)))
     # Glare: bright blurred blobs that are not objects, the main false-positive risk.
     if rng.random() < 0.4:
-        glare = Image.new("L", (size, size), 0)
+        glare = Image.new('L', (size, size), 0)
         draw = ImageDraw.Draw(glare)
         for _ in range(rng.integers(3, 12)):
             x, y = rng.uniform(0, size, 2)
             r = rng.uniform(3, 15)
             draw.ellipse([x - r, y - r, x + r, y + r], fill=int(rng.uniform(80, 200)))
         glare = glare.filter(ImageFilter.GaussianBlur(4))
-        out = Image.composite(Image.new("RGB", (size, size), (240, 240, 240)), out, glare)
+        out = Image.composite(Image.new('RGB', (size, size), (240, 240, 240)), out, glare)
     return out, objects
 
 
@@ -96,48 +96,48 @@ def main():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("out_dir", type=Path)
-    parser.add_argument("--scenes", type=int, default=12)
-    parser.add_argument("--chips-per-scene", type=int, default=10)
-    parser.add_argument("--size", type=int, default=500)
-    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument('out_dir', type=Path)
+    parser.add_argument('--scenes', type=int, default=12)
+    parser.add_argument('--chips-per-scene', type=int, default=10)
+    parser.add_argument('--size', type=int, default=500)
+    parser.add_argument('--seed', type=int, default=0)
     args = parser.parse_args()
 
     rng = np.random.default_rng(args.seed)
-    (args.out_dir / "images").mkdir(parents=True, exist_ok=True)
+    (args.out_dir / 'images').mkdir(parents=True, exist_ok=True)
     images, annotations = [], []
     for s in range(args.scenes):
         for k in range(args.chips_per_scene):
             chip, objects = make_chip(rng, args.size)
             image_id = len(images) + 1
-            file_name = f"scene{s:02d}_chip{k:03d}.png"
-            chip.save(args.out_dir / "images" / file_name)
+            file_name = f'scene{s:02d}_chip{k:03d}.png'
+            chip.save(args.out_dir / 'images' / file_name)
             images.append(
                 {
-                    "id": image_id,
-                    "file_name": file_name,
-                    "width": args.size,
-                    "height": args.size,
-                    "scene_id": f"scene{s:02d}",
+                    'id': image_id,
+                    'file_name': file_name,
+                    'width': args.size,
+                    'height': args.size,
+                    'scene_id': f'scene{s:02d}',
                 }
             )
             for category_id, bbox in objects:
                 annotations.append(
                     {
-                        "id": len(annotations) + 1,
-                        "image_id": image_id,
-                        "category_id": category_id,
-                        "bbox": bbox,
-                        "area": bbox[2] * bbox[3],
-                        "iscrowd": 0,
+                        'id': len(annotations) + 1,
+                        'image_id': image_id,
+                        'category_id': category_id,
+                        'bbox': bbox,
+                        'area': bbox[2] * bbox[3],
+                        'iscrowd': 0,
                     }
                 )
 
-    (args.out_dir / "annotations").mkdir(exist_ok=True)
-    coco = {"images": images, "annotations": annotations, "categories": CATEGORIES}
-    (args.out_dir / "annotations" / "all.json").write_text(json.dumps(coco))
-    print(f"{len(images)} chips, {len(annotations)} objects -> {args.out_dir}")
+    (args.out_dir / 'annotations').mkdir(exist_ok=True)
+    coco = {'images': images, 'annotations': annotations, 'categories': CATEGORIES}
+    (args.out_dir / 'annotations' / 'all.json').write_text(json.dumps(coco))
+    print(f'{len(images)} chips, {len(annotations)} objects -> {args.out_dir}')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

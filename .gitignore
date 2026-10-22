@@ -37,3 +37,6 @@ kaggle.json
 *.swp
 .DS_Store
 Thumbs.db
+
+# Personal tracking notes
+TRACKING.md
