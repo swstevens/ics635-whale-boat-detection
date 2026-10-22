@@ -1,0 +1,9 @@
+data/
+checkpoints/
+*.pt
+*.pth
+*.safetensors
+.venv/
+.ipynb_checkpoints/
+__pycache__/
+kaggle.json

@@ -1,0 +1,31 @@
+[project]
+name = "ics635-whale-boat-detection"
+version = "0.1.0"
+description = "CNN vs DETR detection of whales and boats in Planet SkySat image chips"
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "torch>=2.1",
+    "torchvision>=0.16",
+    "transformers>=4.45",
+    "timm>=1.0",
+    "pycocotools>=2.0.8",
+    "numpy",
+    "pandas",
+    "pillow",
+    "matplotlib",
+    "scikit-learn",
+    "grad-cam>=1.5.5",
+    "jupyter",
+    "ipykernel",
+]
+
+[project.optional-dependencies]
+# Reading the raw 4-band GeoTIFFs (RGB + NIR); not needed for the RGB prototype.
+geo = ["rasterio"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/whaleboat"]
