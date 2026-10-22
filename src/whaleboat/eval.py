@@ -12,6 +12,7 @@ Usage:
     python -m whaleboat.eval data/splits/test.json results/cnn/preds_test.json \
         results/detr/preds_test.json --bootstrap 200 --out results/comparison.json
 """
+
 import argparse
 import contextlib
 import io
@@ -25,8 +26,18 @@ from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
 STAT_NAMES = [
-    "AP", "AP50", "AP75", "AP_small", "AP_medium", "AP_large",
-    "AR1", "AR10", "AR100", "AR_small", "AR_medium", "AR_large",
+    "AP",
+    "AP50",
+    "AP75",
+    "AP_small",
+    "AP_medium",
+    "AP_large",
+    "AR1",
+    "AR10",
+    "AR100",
+    "AR_small",
+    "AR_medium",
+    "AR_large",
 ]
 # Metrics shown in the printed table; everything is still saved to --out.
 SHOWN = ["AP", "AP50", "AP_small", "AR100"]
@@ -112,7 +123,9 @@ def bootstrap(gt, pred_sets, n=200, seed=0, group_key="scene_id"):
                 for a in anns_by_image[img["id"]]:
                     anns.append({**a, "id": len(anns) + 1, "image_id": new_id})
                 for name in pred_sets:
-                    preds[name].extend({**p, "image_id": new_id} for p in preds_by_image[name][img["id"]])
+                    preds[name].extend(
+                        {**p, "image_id": new_id} for p in preds_by_image[name][img["id"]]
+                    )
         sample_gt = {**gt, "images": images, "annotations": anns}
         for name in pred_sets:
             for metric, value in evaluate(sample_gt, preds[name]).items():
@@ -137,11 +150,17 @@ def bootstrap(gt, pred_sets, n=200, seed=0, group_key="scene_id"):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("gt", type=Path, help="COCO ground truth for the split being scored")
     parser.add_argument("preds", type=Path, nargs="+", help="COCO results json, one per model")
-    parser.add_argument("--bootstrap", type=int, default=0, help="number of resamples (0 = point estimates only)")
-    parser.add_argument("--group-key", default="scene_id", help="'none' resamples chips instead of scenes")
+    parser.add_argument(
+        "--bootstrap", type=int, default=0, help="number of resamples (0 = point estimates only)"
+    )
+    parser.add_argument(
+        "--group-key", default="scene_id", help="'none' resamples chips instead of scenes"
+    )
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()

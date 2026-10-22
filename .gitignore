@@ -1,9 +1,39 @@
+# Data: never commit imagery or annotations; they live in shared storage (see DATA.md)
 data/
+
+# Training outputs: checkpoints, predictions, metrics, figures.
+# Share results through the shared drive, not git.
 checkpoints/
+results/
+runs/
+wandb/
+lightning_logs/
 *.pt
 *.pth
+*.ckpt
 *.safetensors
-.venv/
-.ipynb_checkpoints/
+*.onnx
+
+# Python
 __pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.ruff_cache/
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Secrets
+.env
 kaggle.json
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

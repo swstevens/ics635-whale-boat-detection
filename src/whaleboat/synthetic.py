@@ -7,6 +7,7 @@ prediction and evaluation run end to end. Scores on it mean nothing.
 Usage:
     python -m whaleboat.synthetic data/synthetic --scenes 12 --chips-per-scene 10
 """
+
 import argparse
 import json
 from pathlib import Path
@@ -19,7 +20,9 @@ CATEGORIES = [{"id": 1, "name": "whale"}, {"id": 2, "name": "boat"}]
 
 def _ocean(rng, size, base):
     noise = rng.normal(0, 1, (size // 8, size // 8, 3))
-    img = Image.fromarray(np.uint8(np.clip(noise * 40 + 128, 0, 255))).resize((size, size), Image.BICUBIC)
+    img = Image.fromarray(np.uint8(np.clip(noise * 40 + 128, 0, 255))).resize(
+        (size, size), Image.BICUBIC
+    )
     texture = (np.asarray(img, dtype=float) - 128) * 0.15
     fine = rng.normal(0, 4, (size, size, 3))
     return np.clip(base + texture + fine, 0, 255)
@@ -35,7 +38,12 @@ def _rotated_ellipse(size, cx, cy, length, width, angle):
 
 def _bbox(mask):
     ys, xs = np.nonzero(mask)
-    return [int(xs.min()), int(ys.min()), int(xs.max() - xs.min() + 1), int(ys.max() - ys.min() + 1)]
+    return [
+        int(xs.min()),
+        int(ys.min()),
+        int(xs.max() - xs.min() + 1),
+        int(ys.max() - ys.min() + 1),
+    ]
 
 
 def make_chip(rng, size=500):
@@ -57,8 +65,14 @@ def make_chip(rng, size=500):
         angle = rng.uniform(0, 2 * np.pi)
         length = rng.uniform(10, 22)
         # Wake: a faint lighter streak trailing behind the hull.
-        wake = _rotated_ellipse(size, cx - np.cos(angle) * length * 2, cy - np.sin(angle) * length * 2,
-                                length * 3.5, length * 0.6, angle)
+        wake = _rotated_ellipse(
+            size,
+            cx - np.cos(angle) * length * 2,
+            cy - np.sin(angle) * length * 2,
+            length * 3.5,
+            length * 0.6,
+            angle,
+        )
         img[wake] = img[wake] * 0.75 + 255 * 0.25
         hull = _rotated_ellipse(size, cx, cy, length, length * 0.35, angle)
         img[hull] = np.array([235, 235, 230]) + rng.normal(0, 5, 3)
@@ -79,7 +93,9 @@ def make_chip(rng, size=500):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("out_dir", type=Path)
     parser.add_argument("--scenes", type=int, default=12)
     parser.add_argument("--chips-per-scene", type=int, default=10)
@@ -96,12 +112,26 @@ def main():
             image_id = len(images) + 1
             file_name = f"scene{s:02d}_chip{k:03d}.png"
             chip.save(args.out_dir / "images" / file_name)
-            images.append({"id": image_id, "file_name": file_name, "width": args.size,
-                           "height": args.size, "scene_id": f"scene{s:02d}"})
+            images.append(
+                {
+                    "id": image_id,
+                    "file_name": file_name,
+                    "width": args.size,
+                    "height": args.size,
+                    "scene_id": f"scene{s:02d}",
+                }
+            )
             for category_id, bbox in objects:
-                annotations.append({"id": len(annotations) + 1, "image_id": image_id,
-                                    "category_id": category_id, "bbox": bbox,
-                                    "area": bbox[2] * bbox[3], "iscrowd": 0})
+                annotations.append(
+                    {
+                        "id": len(annotations) + 1,
+                        "image_id": image_id,
+                        "category_id": category_id,
+                        "bbox": bbox,
+                        "area": bbox[2] * bbox[3],
+                        "iscrowd": 0,
+                    }
+                )
 
     (args.out_dir / "annotations").mkdir(exist_ok=True)
     coco = {"images": images, "annotations": annotations, "categories": CATEGORIES}

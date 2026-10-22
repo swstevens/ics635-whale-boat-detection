@@ -23,6 +23,18 @@ dependencies = [
 # Reading the raw 4-band GeoTIFFs (RGB + NIR); not needed for the RGB prototype.
 geo = ["rasterio"]
 
+[dependency-groups]
+dev = ["ruff", "pre-commit", "nbstripout"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+# pycodestyle (PEP 8) errors and warnings, pyflakes (unused imports, undefined
+# names), and import sorting.
+select = ["E", "W", "F", "I"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

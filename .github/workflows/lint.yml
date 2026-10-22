@@ -1,0 +1,15 @@
+# Runs ruff on every push and pull request, so style or syntax problems show up
+# on GitHub even if someone skipped the local pre-commit hook.
+name: lint
+
+on: [push, pull_request]
+
+jobs:
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      # Only the dev group is installed, so CI skips the multi-GB torch download.
+      - run: uv run --only-group dev ruff check .
+      - run: uv run --only-group dev ruff format --check .

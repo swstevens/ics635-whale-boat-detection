@@ -7,6 +7,7 @@ are inflated by near-duplicates seen during training.
 Usage:
     python -m whaleboat.splits data/annotations/all.json data/splits
 """
+
 import argparse
 import json
 from collections import Counter
@@ -61,15 +62,18 @@ def split(coco, ratios=(0.7, 0.15, 0.15), seed=635, group_key="scene_id", tries=
         order = list(rng.permutation(n))
         parts = {
             "test": [scenes[i] for i in order[:n_test]],
-            "val": [scenes[i] for i in order[n_test:n_test + n_val]],
-            "train": [scenes[i] for i in order[n_test + n_val:]],
+            "val": [scenes[i] for i in order[n_test : n_test + n_val]],
+            "train": [scenes[i] for i in order[n_test + n_val :]],
         }
         err = 0.0
         for cat, total in totals.items():
-            fracs = np.array([
-                _class_counts(coco, [i for s in parts[p] for i in images_by_scene[s]])[cat] / total
-                for p in ("train", "val", "test")
-            ])
+            fracs = np.array(
+                [
+                    _class_counts(coco, [i for s in parts[p] for i in images_by_scene[s]])[cat]
+                    / total
+                    for p in ("train", "val", "test")
+                ]
+            )
             err += np.abs(fracs - target).sum()
         if err < best_err:
             best, best_err = parts, err
@@ -77,7 +81,9 @@ def split(coco, ratios=(0.7, 0.15, 0.15), seed=635, group_key="scene_id", tries=
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("annotations", type=Path, help="COCO json covering all chips")
     parser.add_argument("out_dir", type=Path)
     parser.add_argument("--ratios", type=float, nargs=3, default=(0.7, 0.15, 0.15))

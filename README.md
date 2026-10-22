@@ -51,7 +51,9 @@ Everyone writes up their own track. The **shared contract** keeps the results
 comparable:
 
 - the same `data/splits/*.json`
-- predictions saved as COCO results json at `results/<model>/preds_test.json`
+- predictions saved as COCO results json at `results/<model>/preds_test.json`.
+  `results/` isn't committed, so copy each model's folder to the shared drive
+  for comparisons.
 - scoring only through `whaleboat.eval`
 
 ## Milestone 2: Wed Oct 28 (runnable prototype + early results)
@@ -74,11 +76,32 @@ the evaluation is honest.
 
 ```bash
 uv sync
+uv run pre-commit install   # once per clone
 uv run jupyter lab
 ```
 
 Notebooks go in `notebooks/cnn/` and `notebooks/detr/`. Shared code is in
 `src/whaleboat/`. Use `import whaleboat` instead of copying it into notebooks.
+
+Until the real data arrives, generate fake chips in the same format:
+
+```bash
+uv run python -m whaleboat.synthetic data/synthetic
+```
+
+`notebooks/detr/conditional_detr.ipynb` runs end to end on these chips:
+training, val mAP, test predictions, eval and cross-attention plots. Scores on
+fake data mean nothing; the point is that the pipeline works.
+
+### Code style
+
+[Ruff](https://docs.astral.sh/ruff/) enforces PEP 8 style (100-character
+lines), catches unused imports and undefined names, and sorts imports.
+
+- The **pre-commit hook** runs ruff and strips notebook outputs on every commit.
+  If it changes a file, the commit stops; `git add` the fixes and commit again.
+- **GitHub Actions** runs the same ruff checks on every push and pull request.
+- To run it by hand: `uv run ruff check --fix . && uv run ruff format .`
 
 ## Evaluation
 
@@ -110,6 +133,7 @@ full precision–recall curve, so don't threshold before saving.
 │   ├── splits.py      scene-grouped train/val/test split
 │   └── eval.py        COCO mAP + scene-bootstrap CIs
 ├── notebooks/{cnn,detr}/
-├── results/           predictions and metrics json (committed)
+├── results/           predictions, configs, metrics (git-ignored; share via the shared drive)
+├── checkpoints/       model weights (git-ignored)
 └── data/              imagery (git-ignored)
 ```
