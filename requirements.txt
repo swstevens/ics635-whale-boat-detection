@@ -1,45 +1,33 @@
-# Python libraries for the whale/boat detection project.
+# Python libraries for the whale/boat chip classifier.
 # Needs Python 3.10-3.13. Install with:
 #
 #   python -m venv .venv
 #   .venv\Scripts\activate          (Windows)   or   source .venv/bin/activate   (Mac/Linux)
 #   pip install -r requirements.txt
 #
-# This mirrors pyproject.toml; uv users can run `uv sync --extra geo` instead.
+# This mirrors pyproject.toml; uv users can run `uv sync` instead.
 # pip installs the CPU-only build of PyTorch on Windows. For an NVIDIA GPU, first install
 # torch and torchvision from the command at https://pytorch.org/get-started/locally/.
 
 # Models and training
 torch>=2.1
-torchvision>=0.16
-transformers>=4.45
 timm>=1.0
-grad-cam>=1.5.5
 einops==0.8.2
 
 # Data and evaluation
 numpy
-pandas
-pillow
 matplotlib
 scikit-learn
-pycocotools>=2.0.8
 rasterio
+
+# Drive access in data_ingester.ipynb
+google-api-python-client
 
 # Notebooks
 jupyter
 ipykernel
 
-# Used by individual notebooks: Drive access in data_ingester.ipynb, ONNX checks in
-# train_detection_local.ipynb
-google-api-python-client
-google-auth-oauthlib
-onnxruntime
-
 # Code style (pre-commit hook)
 ruff
 pre-commit
 nbstripout
-
-# The project's own shared code, so notebooks can `import whaleboat`
--e .
