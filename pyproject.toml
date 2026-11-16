@@ -18,6 +18,8 @@ dependencies = [
 
 [dependency-groups]
 dev = ["ruff", "pre-commit", "nbstripout"]
+# scripts/ that build and check the SkySat chips from the source scenes and shapefiles.
+data = ["pyshp", "pandas"]
 
 [tool.ruff]
 line-length = 100

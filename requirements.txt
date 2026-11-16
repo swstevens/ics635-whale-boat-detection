@@ -20,6 +20,10 @@ matplotlib
 scikit-learn
 rasterio
 
+# scripts/ that build the SkySat chips (uv: `uv sync --group data`)
+pyshp
+pandas
+
 # Drive access in data_ingester.ipynb
 google-api-python-client
 
