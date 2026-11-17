@@ -3,9 +3,11 @@
 ICS 635 semester project. Team: Shea Stevens, Joseph Behrens and Kim Cates.
 Collaborator: Jake Linksy, PhD (HIMB, Madin lab).
 
-This repo gives each 500x500 SkySat chip one label: **water**, **whale** or **boat**. It trains and
-compares three models (EfficientNet-B0, DeiT-Tiny, and a SatViT-V2 encoder with a classification
-head), then evaluates them against simple baselines.
+This repo finds whales and boats in 500x500 Planet SkySat chips. The main work is **detection**:
+a CNN baseline (Faster R-CNN) and a DETR model (Conditional DETR), tuned and trained the same way
+on the same scene-grouped split, plus a weather-augmentation ablation. An earlier **chip
+classifier** (water / whale / boat per chip: EfficientNet-B0, DeiT-Tiny, SatViT-V2) is kept for
+comparison.
 
 ## Setup
 
@@ -63,7 +65,29 @@ uv run --group data python scripts/qc_skysat_chips.py data/skysat_chips_500 \
 
 `data/skysat_annotations/` is a local copy of the drive's shapefiles and scene metadata.
 
-## Running it
+## Running it: detection
+
+The notebooks run locally or on Google Colab (GPU runtime; checkpoints then go to Google Drive).
+
+1. **Get the data.** Run `notebooks/data_ingester.ipynb`, or copy `data/` from a teammate.
+2. **Train the CNN baseline.** Run `notebooks/train_faster_rcnn.ipynb`. It searches
+   hyperparameters with Optuna on the validation split, trains the best setting, picks the score
+   cutoff that finds `TARGET_RECALL` (90%) of validation whales and boats, and saves
+   `checkpoints/frcnn_main/`.
+3. **Train DETR.** Run `notebooks/train_detr.ipynb` the same way (`checkpoints/detr_main/`).
+4. **Ablation.** Rerun `train_detr.ipynb` with `RUN_NAME = 'detr_noweather'`,
+   `WEATHER_AUG = False` and `SPLIT_FROM = PARAMS_FROM = 'detr_main'`.
+5. **Evaluate.** Run `notebooks/evaluate_detectors.ipynb`. It scores everything on the test split
+   (used once) with group-bootstrap intervals and compares against a non-learned blob detector.
+   It also shows PR curves, recall by annotator certainty, results by haze, water roughness and
+   sun angle, failure examples, DETR attention maps and the ablation.
+
+**Scoring.** Labels are points, so training turns each point into a fixed-size box (the size is
+tuned), and scoring counts a detection as correct when its center is within 10 m of a point.
+Missing a whale costs more than a false alarm, so models are compared by average precision. The
+operating cutoff is set for recall, and its false alarms per km² are reported.
+
+## Running it: chip classifier
 
 1. **Get the data.** Run `notebooks/data_ingester.ipynb` (Colab), or copy `data/` from a teammate.
 2. **Get the SatViT weights (optional).** Download `SatViT_V2.pt` into `checkpoints/`, using the
@@ -95,9 +119,12 @@ lines), catches unused imports and undefined names, and sorts imports.
 ```
 ├── notebooks/
 │   ├── data_ingester.ipynb          downloads both chip sets from Google Drive
-│   ├── train_chip_classifier.ipynb  trains the three models, saves a run folder
-│   └── evaluate_models.ipynb        baselines, test metrics, error analysis, ablations
-├── src/whaleboat/     shared code: chip loading, splits, model inputs, models, metrics
+│   ├── train_faster_rcnn.ipynb      detection: CNN baseline (tune, train, set cutoff)
+│   ├── train_detr.ipynb             detection: Conditional DETR (same steps)
+│   ├── evaluate_detectors.ipynb     detection: test results, conditions, attention, ablation
+│   ├── train_chip_classifier.ipynb  classifier: trains the three models, saves a run folder
+│   └── evaluate_models.ipynb        classifier: baselines, test metrics, error analysis
+├── src/whaleboat/     shared code: chips, splits, detection labels/scoring, models, metrics
 ├── scripts/           build, crop, describe and quality-check the SkySat chips
 ├── satvit/            SatViT-V2 encoder code (see satvit/README.md for the weights)
 ├── checkpoints/       model weights and run folders (git-ignored)
