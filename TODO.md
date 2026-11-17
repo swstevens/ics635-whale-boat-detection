@@ -23,8 +23,15 @@ plot validation whale AP against the fraction.
 
 ## 2. Tune for whales, not mean AP
 
-The search picked settings by mean AP, but boat AP is ~0.95 in every trial, so the search mostly
-followed noise. Rerun with `SELECTION_METRIC='whale_ap'`. Cost: one search per model (Colab).
+The search picked settings by mean AP. Each trial also logged its whale AP (`search_trials.csv`),
+and re-ranking the finished trials by whale AP changes little: Faster R-CNN's winner is the same
+trial (whale AP 0.459); DETR's best by whale AP is trial 1 (0.436, scale 1.0) vs the chosen
+trial 13 (0.433, scale 1.6), a tie within noise. So a new search is low priority.
+
+What `SELECTION_METRIC` still changes is which epoch's weights the final run keeps. Cheapest
+version: rerun only the final training with `SELECTION_METRIC='whale_ap'` and
+`PARAMS_FROM`/`SPLIT_FROM` the existing run (no search). A full search with `whale_ap` would also
+let the search steer and prune by whale AP, but expect a small gain. Low priority.
 
 ## 3. Dropout (DETR)
 
