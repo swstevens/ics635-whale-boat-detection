@@ -53,6 +53,29 @@ red. Surfaced whales and boats are bright against near-black water in NIR; subme
 invisible in NIR (absorbed within the top few tens of cm), so report whales and boats separately.
 Run as an ablation on Faster R-CNN.
 
+## 7. Ensemble of Faster R-CNN + DETR (open for someone to take)
+
+The two are strong at opposite ends of the PR curve: DETR is more precise on confident whales
+(65% vs 52% precision at the find cutoff), Faster R-CNN keeps finding whales at lower cutoffs (74%
+vs 57% recall at ~10 false alarms/km2). No retraining needed:
+
+1. Run both saved models on each chip.
+2. Merge same-class detections within 10 m (the matching radius); score = mean of the two models'
+   scores, counting a model that missed it as 0.
+3. Choose find / review / count cutoffs on validation, score once on test as a third method.
+
+About an hour of work and a few minutes of GPU. Gains may be within noise with 54 test whales;
+a negative result is still worth reporting.
+
+## 8. Model-assisted labeling loop (pitch to the researchers)
+
+The most likely bottleneck is labeled whales (227 in training vs 650 boats). Instead of labeling
+from scratch: run the best model (Faster R-CNN or the ensemble) at the review cutoff on unlabeled
+scenes, researchers confirm or reject each box, confirmed boxes become new whales, rejected ones
+become hard negatives (whitecaps, glint, debris), retrain, repeat. Prioritize new dates, rough
+water and glint, label whole scenes completely, and keep certainty levels. Pairs with item 1:
+the learning curve says whether more whales are worth asking for.
+
 ## Related: SatViT classifier comparison (teammate)
 
 SatViT-V2 is pretrained at 10 m with 15 bands; SkySat is 0.5 m with 4. Expect it to do no better
