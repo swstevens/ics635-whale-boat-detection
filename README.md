@@ -3,74 +3,9 @@
 ICS 635 semester project. Team: Shea Stevens, Joseph Behrens and Kim Cates.
 Collaborator: Jake Linksy, PhD (HIMB, Madin lab).
 
-## Scope
-
-The proposal compared many classical and deep-learning approaches. Following
-the professors' feedback, we're narrowing it to **one CNN detector as a
-baseline and one DETR-family detector**, with the analysis centered on DETR.
-
-| Model | Implementation | Why |
-|---|---|---|
-| **CNN baseline:** Faster R-CNN, ResNet-50 FPN | `torchvision`, COCO-pretrained | Already in the proposal, well understood, reads COCO data directly |
-| **DETR:** Conditional DETR, ResNet-50 | `transformers` (`microsoft/conditional-detr-resnet-50`) | Fine-tunes much faster than the original DETR and exposes its cross-attention maps |
-
-Both models use a **ResNet-50 backbone**, so differences come from the detection
-head (anchors + NMS vs object queries + attention) and not the feature extractor.
-If Conditional DETR struggles on small whales, Deformable DETR is the fallback
-because it was designed for small objects.
-
-### Questions
-
-1. **How do the two detectors compare on whales and boats**, especially small
-   objects? Results are reported with scene-level bootstrap CIs.
-2. **What does DETR attend to?** We'll look at decoder cross-attention per
-   object query: whale body, wake, glint, or something else? We'll compare it
-   with Grad-CAM on the CNN.
-3. **Where do they fail?** We'll look at false positives on glare and
-   whitecaps, and at results by condition if condition labels exist.
-
-### Cut, or moved to later milestones
-
-- **Later** (if time allows):
-  - an SVM probe on DETR query embeddings
-  - a boosted-tree re-scorer on detector outputs
-  - Optuna tuning
-  - NIR deglinting and filtering ablations
-- **Cut:** handcrafted-feature baselines (HOG/LBP/GLCM + SVM/RF/XGBoost),
-  RetinaNet, YOLO and the stacked ensemble.
-
-## Roles
-
-| Track | Owner | Owns |
-|---|---|---|
-| Data and evaluation | data lead | Getting chips and COCO labels off the drive into shared storage, splits (`DATA.md`), condition tags |
-| CNN baseline | CNN lead | Faster R-CNN fine-tuning, Grad-CAM, CNN results section |
-| DETR | Shea | Conditional DETR fine-tuning, attention analysis, DETR results section |
-
-Everyone writes up their own track. The **shared contract** keeps the results
-comparable:
-
-- the same `data/splits/*.json`
-- predictions saved as COCO results json at `results/<model>/preds_test.json`.
-  `results/` isn't committed, so copy each model's folder to the shared drive
-  for comparisons.
-- scoring only through `whaleboat.eval`
-
-## Milestone 2: Wed Oct 28 (runnable prototype + early results)
-
-- [ ] **Data:** a prototype subset (a few hundred to ~2k chips, empty chips included) in shared storage, plus `all.json` and splits
-- [ ] **CNN:** Faster R-CNN fine-tunes end to end and writes `preds_test.json`
-- [ ] **DETR:** Conditional DETR fine-tunes end to end and writes `preds_test.json`
-- [ ] Comparison table from `whaleboat.eval` with bootstrap CIs
-- [ ] A few example predictions from each model, including failures
-- [ ] One DETR attention map, to preview the main analysis
-- [ ] Next steps
-
-The CNN and DETR tracks don't need to wait for data. Get the training loop
-running on any small COCO-format sample first, then swap in the real splits.
-
-Early numbers can be bad. What matters is that everything runs end to end and
-the evaluation is honest.
+This repo gives each 500x500 SkySat chip one label: **water**, **whale** or **boat**. It trains and
+compares three models (EfficientNet-B0, DeiT-Tiny, and a SatViT-V2 encoder with a classification
+head), then evaluates them against simple baselines.
 
 ## Setup
 
@@ -80,20 +15,72 @@ uv run pre-commit install   # once per clone
 uv run jupyter lab
 ```
 
-Notebooks go in `notebooks/cnn/` and `notebooks/detr/`. Shared code is in
-`src/whaleboat/`. Use `import whaleboat` instead of copying it into notebooks.
+Without uv, follow the steps at the top of `requirements.txt`. The scripts that build the SkySat
+chips need two extra packages: `uv sync --group data` (or `pip install pyshp pandas`).
 
-Until the real data arrives, generate fake chips in the same format:
+## Data
 
-```bash
-uv run python -m whaleboat.synthetic data/synthetic
+Two chip sets, both 500x500, 4 bands (Blue, Green, Red, NIR), uint16, 0.5 m, georeferenced:
+
+| Set | Where | What |
+| --- | --- | --- |
+| original | `data/whale/data/` | 144 hand-picked chips with whale/boat masks |
+| skysat | `data/skysat_chips_500/` | ~2,000 chips cut from the annotated SkySat scenes |
+
+`data_ingester.ipynb` downloads both from Google Drive. `skysat_chips_500/` holds:
+
+```
+main/               training pool: water, boat, whales with certainty 1-2
+uncertain_whales/   "possibly a whale" (certainty 0); evaluation only, never trained on
+set_aside/          duplicates and water chips with a possible missed object (with reasons)
+qc/                 quality-check tables
 ```
 
-`notebooks/detr/conditional_detr.ipynb` runs end to end on these chips:
-training, val mAP, test predictions, eval and cross-attention plots. Scores on
-fake data mean nothing; the point is that the pipeline works.
+Each folder has `images/`, `manifest.csv` (one row per chip: label, scene, date, quality
+stats), `points.csv` (each annotated object's pixel position and annotator certainty) and
+`manifest_conditions.csv` (sun angle, haze, water roughness).
 
-### Code style
+**Where the SkySat chips come from.** The source scenes and the annotators' point shapefiles
+(`SatWhale/WhaleDetect/`) are on the lab's external drive. The labels are one annotator's visual
+judgment per scene, with certainty 0 (possibly), 1 (likely) or 2 (clearly a whale). Water chips
+come only from grid cells the annotator marked as fully scanned. The chips were made with:
+
+```bash
+# 1. Cut 512 px chips (reads only the needed windows; mount the drive read-only)
+uv run --group data python scripts/build_skysat_chips.py --mode extract \
+  --scenes-root "<drive>/SatWhale/data/usa-hawaii_west_lahaina_c" \
+  --annotations data/skysat_annotations --exclude-chips data/whale/data/images \
+  --out data/skysat_chips --water-per-scene 30 --seed 0
+# 2. Center-crop to 500 px and split off the uncertain whales
+uv run --group data python scripts/crop_and_split_chips.py data/skysat_chips data/skysat_chips_500
+# 3. Imaging conditions per chip
+uv run --group data python scripts/describe_chip_conditions.py \
+  data/skysat_chips_500/main data/skysat_annotations/scene_metadata
+# 4. Quality checks; --apply moves duplicates and suspect water chips to set_aside/
+uv run --group data python scripts/qc_skysat_chips.py data/skysat_chips_500 \
+  --original data/whale/data/images --apply
+```
+
+`data/skysat_annotations/` is a local copy of the drive's shapefiles and scene metadata.
+
+## Running it
+
+1. **Get the data.** Run `notebooks/data_ingester.ipynb` (Colab), or copy `data/` from a teammate.
+2. **Get the SatViT weights (optional).** Download `SatViT_V2.pt` into `checkpoints/`, using the
+   links in `satvit/README.md`. Without the file, the SatViT run is skipped.
+3. **Train.** Run `notebooks/train_chip_classifier.ipynb`. It writes `checkpoints/<RUN_NAME>/`:
+   `run.json` (datasets, the exact train/val/test chip lists, seed, settings) and one `.pt` per
+   model. It reports validation scores only.
+4. **Evaluate.** Run `notebooks/evaluate_models.ipynb` on the same `RUN_NAME`. It compares the
+   models with a majority-class and a logistic-regression baseline on the test split (used
+   once), with group-bootstrap confidence intervals, PR/ROC curves, calibration, error analysis
+   by date and weather, failure examples and an ablation table across runs.
+
+**Splits.** `SPLIT_MODE = 'group'` (default) keeps chips from the same day whose footprints
+overlap in one split, so the same boat or patch of water can't be in train and test.
+`'date'` holds out whole days (new weather), and `'random'` ignores groups (comparison only).
+
+## Code style
 
 [Ruff](https://docs.astral.sh/ruff/) enforces PEP 8 style (100-character
 lines), catches unused imports and undefined names, and sorts imports.
@@ -103,37 +90,16 @@ lines), catches unused imports and undefined names, and sorts imports.
 - **GitHub Actions** runs the same ruff checks on every push and pull request.
 - To run it by hand: `uv run ruff check --fix . && uv run ruff format .`
 
-## Evaluation
-
-```bash
-uv run python -m whaleboat.eval data/splits/test.json \
-    results/cnn/preds_test.json results/detr/preds_test.json \
-    --bootstrap 200 --out results/comparison.json
-```
-
-This reports COCO AP, AP50, AP_small, AR100 and per-class AP50, each with a
-95% CI from resampling whole test scenes. With two models it also reports a
-paired CI on the difference, which answers whether the gap between the models
-is real.
-
-Prediction format, one entry per box, with `image_id` matching the split json:
-
-```json
-[{"image_id": 12, "category_id": 1, "bbox": [x, y, w, h], "score": 0.91}]
-```
-
-Keep low-confidence boxes (score ≥ ~0.05, up to 100 per chip). mAP needs the
-full precision–recall curve, so don't threshold before saving.
-
 ## Layout
 
 ```
-├── DATA.md            data contract and open questions about the dataset
-├── src/whaleboat/
-│   ├── splits.py      scene-grouped train/val/test split
-│   └── eval.py        COCO mAP + scene-bootstrap CIs
-├── notebooks/{cnn,detr}/
-├── results/           predictions, configs, metrics (git-ignored; share via the shared drive)
-├── checkpoints/       model weights (git-ignored)
+├── notebooks/
+│   ├── data_ingester.ipynb          downloads both chip sets from Google Drive
+│   ├── train_chip_classifier.ipynb  trains the three models, saves a run folder
+│   └── evaluate_models.ipynb        baselines, test metrics, error analysis, ablations
+├── src/whaleboat/     shared code: chip loading, splits, model inputs, models, metrics
+├── scripts/           build, crop, describe and quality-check the SkySat chips
+├── satvit/            SatViT-V2 encoder code (see satvit/README.md for the weights)
+├── checkpoints/       model weights and run folders (git-ignored)
 └── data/              imagery (git-ignored)
 ```

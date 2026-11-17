@@ -1,4 +1,4 @@
-# Data: never commit imagery or annotations; they live in shared storage (see DATA.md)
+# Data: never commit imagery or annotations; they live in shared storage
 data/
 
 # Training outputs: checkpoints, predictions, metrics, figures.
